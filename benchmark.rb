@@ -1,6 +1,5 @@
 require 'benchmark'
 require 'json'
-require 'patron'
 require 'httpclient'
 require 'faraday'
 require 'typhoeus'
@@ -8,7 +7,7 @@ require 'typhoeus/adapters/faraday'
 
 n = 100
 
-adapters = [:net_http, :typhoeus, :patron, :httpclient]
+adapters = [:net_http, :typhoeus, :httpclient]
 
 def create_client(adapter)
   host = 'https://core.spreedly.com/'
