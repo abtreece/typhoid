@@ -138,17 +138,7 @@ module TLSServer
       SSLExtraChainCerts: [ca_cert]
     }
 
-    if ssl_version
-      ctx = OpenSSL::SSL::SSLContext.new
-      ctx.min_version = ssl_version
-      ctx.max_version = ssl_version
-      ctx.ciphers = ciphers if ciphers
-      ssl_config[:SSLContext] = ctx
-      # WEBrick needs these even when SSLContext is provided
-      ssl_config[:SSLContext].cert = leaf_cert
-      ssl_config[:SSLContext].key = leaf_key
-      ssl_config[:SSLContext].extra_chain_cert = [ca_cert]
-    end
+    ssl_config[:SSLCiphers] = ciphers if ciphers
 
     tempfiles = []
 
@@ -166,6 +156,15 @@ module TLSServer
       AccessLog: [],
       **ssl_config
     )
+
+    # WEBrick#setup_ssl_context always creates a new SSLContext, ignoring any
+    # :SSLContext we pass. Apply TLS version constraints on the cached context
+    # after WEBrick's constructor triggers ssl_context via listen.
+    if ssl_version
+      ctx = server.ssl_context
+      ctx.min_version = ssl_version
+      ctx.max_version = ssl_version
+    end
 
     handler = mount_proc || proc do |_req, res|
       res['Content-Type'] = 'application/json'
