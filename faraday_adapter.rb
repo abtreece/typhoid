@@ -1,7 +1,9 @@
 require 'faraday'
 require 'faraday/typhoeus'
 
-conn = Faraday.new(url: 'https://httpbin.org') do |f|
+url = ENV.fetch('TARGET_URL', 'https://httpbin.org')
+
+conn = Faraday.new(url: url) do |f|
   f.adapter :typhoeus
 end
 

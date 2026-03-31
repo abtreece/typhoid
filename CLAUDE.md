@@ -30,10 +30,10 @@ bundle exec ruby ffi.rb           # FFI/libc loading test
 There is no library or gem structure — these are independent exploration scripts, not a package. No tests exist.
 
 - **typhoid.rb** — direct Typhoeus request with response handling callbacks
-- **benchmark.rb** — `Benchmark.bm` comparing Faraday adapters (net_http, typhoeus, httpclient) over 100 requests
+- **benchmark.rb** — `Benchmark.bm` comparing HTTP clients (net_http and typhoeus via Faraday, httpclient directly, plus Typhoeus Hydra for concurrency)
 - **faraday_adapter.rb** — minimal Faraday + Typhoeus adapter example
 - **ffi.rb** — FFI library loading proof-of-concept (loads libc)
 
 ## Dependencies
 
-Key gems: `typhoeus` (wraps libcurl via `ethon`/`ffi`), `faraday` 1.x (HTTP client abstraction), `httpclient`, `benchmark`.
+Key gems: `typhoeus` (wraps libcurl via `ethon`/`ffi`), `faraday` 2.x + `faraday-typhoeus` (HTTP client abstraction), `httpclient`, `webrick` (local benchmark server).
