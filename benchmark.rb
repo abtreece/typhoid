@@ -1,35 +1,71 @@
 require 'benchmark'
-require 'json'
+require 'socket'
+require 'webrick'
 require 'httpclient'
 require 'faraday'
+require 'faraday/typhoeus'
 require 'typhoeus'
-require 'typhoeus/adapters/faraday'
 
 n = 100
+concurrency = 20
 
-adapters = [:net_http, :typhoeus, :httpclient]
+# Local server to isolate client overhead from network latency
+server = WEBrick::HTTPServer.new(
+  Port: 0,
+  Logger: WEBrick::Log.new(File::NULL),
+  AccessLog: []
+)
+server.mount_proc '/' do |_req, res|
+  res['Content-Type'] = 'application/json'
+  res.body = '{"status":"ok"}'
+end
+Thread.new { server.start }
 
-def create_client(adapter)
-  host = 'https://core.spreedly.com/'
+port = server.listeners.first.addr[1]
+url = "http://localhost:#{port}/"
 
-  Faraday.new(url: host, ssl: { verify: false }) do |conn|
-    conn.adapter adapter
-  end
+# Wait for server to accept connections
+10.times do
+  TCPSocket.new('localhost', port).close
+  break
+rescue Errno::ECONNREFUSED
+  sleep 0.01
 end
 
-Benchmark.bm(20) do |x|
+adapters = { net_http: :net_http, typhoeus: :typhoeus }
 
-  adapters.each do |adapter|
-    x.report("#{adapter}:") do
-      client = create_client(adapter)
+clients = adapters.transform_values do |adapter|
+  Faraday.new(url: url) { |conn| conn.adapter adapter }
+end
 
-      n.times do |i|
-        client.get do |req|
-          req.url "/v1/gateways_options.json"
-          req.headers['Content-Type'] = 'application/json'
-        end
+# Warmup — connection pool init, JIT
+clients.each_value { |c| c.get('/') }
+
+puts "#{n} sequential requests per adapter, #{concurrency} concurrent for Hydra\n\n"
+
+begin
+  Benchmark.bm(25) do |x|
+    clients.each do |name, client|
+      x.report("#{name} (sequential):") do
+        n.times { client.get('/') }
       end
     end
-  end
 
+    # Typhoeus Hydra — parallel requests via libcurl multi interface
+    x.report("typhoeus hydra (#{concurrency}x):") do
+      hydra = Typhoeus::Hydra.new(max_concurrency: concurrency)
+      n.times do
+        hydra.queue(Typhoeus::Request.new(url))
+      end
+      hydra.run
+    end
+
+    # httpclient for comparison (not a Faraday adapter in 2.x)
+    x.report("httpclient (sequential):") do
+      hc = HTTPClient.new
+      n.times { hc.get(url) }
+    end
+  end
+ensure
+  server.shutdown
 end

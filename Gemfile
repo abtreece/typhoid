@@ -1,8 +1,10 @@
 source 'https://rubygems.org'
 
-ruby '3.1.0'
+ruby '3.4.1'
 
 gem 'benchmark'
-gem 'faraday',  '~> 1.9.3'
+gem 'faraday', '~> 2.12'
+gem 'faraday-typhoeus'
 gem 'typhoeus'
 gem 'httpclient'
+gem 'webrick'

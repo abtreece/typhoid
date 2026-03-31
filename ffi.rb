@@ -1,12 +1,16 @@
 #!/usr/bin/env ruby
 require 'ffi'
 
-puts "libc => #{FFI::Library::LIBC}"
-
-module Test
+module LibC
   extend FFI::Library
-  ffi_lib(FFI::Library::LIBC)
-  # ffi_lib('libc.dylib')
-  # ffi_lib('/usr/lib/libc.dylib')
-  puts "successfully loaded: #{ffi_libraries}"
+  ffi_lib FFI::Library::LIBC
+
+  attach_function :getpid, [], :int
+  attach_function :getuid, [], :uint
+  attach_function :getgid, [], :uint
 end
+
+puts "libc: #{FFI::Library::LIBC}"
+puts "pid:  #{LibC.getpid}"
+puts "uid:  #{LibC.getuid}"
+puts "gid:  #{LibC.getgid}"
