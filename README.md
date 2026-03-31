@@ -1,6 +1,6 @@
 # Typhoid
 
-Exploration and benchmarking of Ruby HTTP client libraries — comparing [Typhoeus](https://github.com/typhoeus/typhoeus) (libcurl via FFI), [Faraday](https://github.com/lostisland/faraday) adapters, and [httpclient](https://github.com/nahi/httpclient).
+Exploration and benchmarking of Ruby HTTP client libraries — comparing [Typhoeus](https://github.com/typhoeus/typhoeus) (libcurl via FFI), [HTTP.rb](https://github.com/httprb/http), [httpx](https://gitlab.com/os85/httpx), [Excon](https://github.com/excon/excon), [httpclient](https://github.com/nahi/httpclient), and [Faraday](https://github.com/lostisland/faraday) adapters.
 
 ## Setup
 
@@ -21,17 +21,21 @@ bundle exec ruby ffi.rb              # FFI function binding (libc getpid/getuid/
 
 ### Benchmark
 
-Compares sequential request throughput across net_http, Typhoeus, and httpclient, plus concurrent requests via Typhoeus Hydra (libcurl multi interface). Runs against a local WEBrick server to isolate client overhead from network latency.
+Compares sequential and concurrent request throughput across Ruby HTTP clients. Runs against a local WEBrick server to isolate client overhead from network latency.
 
 ```
 $ bundle exec ruby benchmark.rb
-100 sequential requests per adapter, 20 concurrent for Hydra
+100 sequential requests, 20 concurrent for Hydra/httpx
 
                                 user     system      total        real
-net_http (sequential):      0.037079   0.029942   0.067021 (  0.070897)
-typhoeus (sequential):      0.026065   0.007279   0.033344 (  0.032752)
-typhoeus hydra (20x):       0.023635   0.009770   0.033405 (  0.031150)
-httpclient (sequential):    0.018895   0.009908   0.028803 (  0.026705)
+net_http (sequential):      0.030987   0.027114   0.058101 (  0.060819)
+typhoeus (sequential):      0.027921   0.006180   0.034101 (  0.032995)
+typhoeus hydra (20x):       0.018413   0.008402   0.026815 (  0.025023)
+httpclient (sequential):    0.017611   0.009057   0.026668 (  0.024709)
+http.rb (sequential):       0.025343   0.022475   0.047818 (  0.050925)
+excon (sequential):         0.015554   0.007385   0.022939 (  0.021729)
+httpx (sequential):         0.035922   0.013852   0.049774 (  0.049687)
+httpx (20x):                0.017343   0.006821   0.024164 (  0.022185)
 ```
 
 ## References
