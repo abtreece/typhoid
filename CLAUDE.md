@@ -33,6 +33,7 @@ There is no library or gem structure — these are independent exploration scrip
 - **benchmark.rb** — `Benchmark.bm` comparing HTTP clients (net_http and typhoeus via Faraday; httpclient, http.rb, excon, httpx directly; plus Hydra and httpx concurrent modes)
 - **faraday_adapter.rb** — minimal Faraday + Typhoeus adapter example
 - **ffi.rb** — FFI library loading proof-of-concept (loads libc)
+- **lib/tls_server.rb** — shared helper for TLS validation scripts: runtime CA/leaf cert generation, WEBrick HTTPS server on ephemeral port, mTLS support, configurable TLS versions/ciphers
 
 ## Dependencies
 
