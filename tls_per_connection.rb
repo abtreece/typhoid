@@ -17,6 +17,7 @@ puts "Ruby OpenSSL: #{OpenSSL::OPENSSL_VERSION}"
 puts "libcurl:      #{curl_version}"
 puts
 
+begin
 # Start two servers with different ciphers (both TLS 1.2 for libcurl compatibility)
 server_a = TLSServer.start(
   ssl_version: OpenSSL::SSL::TLS1_2_VERSION,
@@ -105,5 +106,7 @@ puts
 puts "  Platform note: macOS libcurl uses SecureTransport/LibreSSL (#{curl_version.split.first(2).last})."
 puts "  Production Linux uses OpenSSL-backed libcurl with full TLS 1.3 support."
 
-server_a.server.shutdown
-server_b.server.shutdown
+ensure
+  server_a&.server&.shutdown
+  server_b&.server&.shutdown
+end

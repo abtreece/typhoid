@@ -45,6 +45,7 @@ end
 
 servers = []
 
+begin
 puts "TLS Error Diagnostics Comparison"
 puts "=" * 90
 puts
@@ -131,4 +132,6 @@ puts
 puts "  Faraday+Typhoeus:     Wraps libcurl errors as Faraday::ConnectionFailed."
 puts "  Original libcurl message preserved. Can inspect response for return_code."
 
-servers.each { |s| s.server.shutdown }
+ensure
+  servers.each { |s| s.server.shutdown }
+end
