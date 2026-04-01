@@ -8,6 +8,7 @@ module TLSServer
   ServerInfo = Struct.new(
     :url, :server, :ca_path,
     :client_cert_path, :client_key_path,
+    :_tempfiles,
     keyword_init: true
   )
 
@@ -84,12 +85,13 @@ module TLSServer
     [cert, key]
   end
 
-  # Write a PEM to a Tempfile, return the path
+  # Write a PEM to a Tempfile, return [path, tempfile_object].
+  # Caller must keep tempfile_object alive to prevent GC deletion.
   def write_pem(pem_string, prefix)
     f = Tempfile.new([prefix, '.pem'])
     f.write(pem_string)
-    f.flush
-    f.path
+    f.close
+    [f.path, f]
   end
 
   # Wait for a TCP port to accept connections
@@ -136,20 +138,13 @@ module TLSServer
       SSLExtraChainCerts: [ca_cert]
     }
 
-    if ssl_version
-      ctx = OpenSSL::SSL::SSLContext.new
-      ctx.min_version = ssl_version
-      ctx.max_version = ssl_version
-      ctx.ciphers = ciphers if ciphers
-      ssl_config[:SSLContext] = ctx
-      # WEBrick needs these even when SSLContext is provided
-      ssl_config[:SSLContext].cert = leaf_cert
-      ssl_config[:SSLContext].key = leaf_key
-      ssl_config[:SSLContext].extra_chain_cert = [ca_cert]
-    end
+    ssl_config[:SSLCiphers] = ciphers if ciphers
+
+    tempfiles = []
 
     if require_client_cert
-      ca_pem_path = write_pem(ca_cert.to_pem, 'typhoid-server-ca')
+      ca_pem_path, ca_pem_tf = write_pem(ca_cert.to_pem, 'typhoid-server-ca')
+      tempfiles << ca_pem_tf
       ssl_config[:SSLVerifyClient] = OpenSSL::SSL::VERIFY_FAIL_IF_NO_PEER_CERT | OpenSSL::SSL::VERIFY_PEER
       ssl_config[:SSLClientCA] = [ca_cert]
       ssl_config[:SSLCACertificateFile] = ca_pem_path
@@ -162,6 +157,15 @@ module TLSServer
       **ssl_config
     )
 
+    # WEBrick#setup_ssl_context always creates a new SSLContext, ignoring any
+    # :SSLContext we pass. Apply TLS version constraints on the cached context
+    # after WEBrick's constructor triggers ssl_context via listen.
+    if ssl_version
+      ctx = server.ssl_context
+      ctx.min_version = ssl_version
+      ctx.max_version = ssl_version
+    end
+
     handler = mount_proc || proc do |_req, res|
       res['Content-Type'] = 'application/json'
       res.body = '{"status":"ok"}'
@@ -173,18 +177,23 @@ module TLSServer
     port = server.listeners.first.addr[1]
     wait_for_port(port)
 
-    ca_path = write_pem(ca_cert.to_pem, 'typhoid-ca')
+    ca_path, ca_tf = write_pem(ca_cert.to_pem, 'typhoid-ca')
+    tempfiles << ca_tf
 
     info = ServerInfo.new(
       url: "https://localhost:#{port}/",
       server: server,
-      ca_path: ca_path
+      ca_path: ca_path,
+      _tempfiles: tempfiles
     )
 
     if require_client_cert
       client_cert, client_key = generate_client_cert(ca_cert, ca_key)
-      info.client_cert_path = write_pem(client_cert.to_pem, 'typhoid-client-cert')
-      info.client_key_path = write_pem(client_key.to_pem, 'typhoid-client-key')
+      cert_path, cert_tf = write_pem(client_cert.to_pem, 'typhoid-client-cert')
+      key_path, key_tf = write_pem(client_key.to_pem, 'typhoid-client-key')
+      tempfiles.push(cert_tf, key_tf)
+      info.client_cert_path = cert_path
+      info.client_key_path = key_path
     end
 
     info
