@@ -55,10 +55,13 @@ def run_threaded(name, threads, requests_per_thread)
   errors.each { |err, count| puts "  Error (#{count}x): #{err}" } if errors.any?
   puts "  Body integrity: #{failures.zero? ? 'PASS' : 'FAIL'}"
   puts
+  failures.zero?
 end
 
+all_passed = true
+
 # --- Typhoeus direct ---
-run_threaded('Typhoeus (direct, shared connection pool)', THREADS, REQUESTS_PER_THREAD) do
+all_passed &= run_threaded('Typhoeus (direct, shared connection pool)', THREADS, REQUESTS_PER_THREAD) do
   resp = Typhoeus.get(url, cainfo: ca_path)
   { success: resp.success?, body: resp.body, error: (resp.return_message unless resp.success?) }
 end
@@ -69,7 +72,7 @@ faraday_client = Faraday.new(url: url, ssl: { ca_file: ca_path }) do |conn|
 end
 faraday_client.get('/')
 
-run_threaded('Faraday + Typhoeus (shared client)', THREADS, REQUESTS_PER_THREAD) do
+all_passed &= run_threaded('Faraday + Typhoeus (shared client)', THREADS, REQUESTS_PER_THREAD) do
   begin
     resp = faraday_client.get('/')
     ok = resp.status == 200
@@ -80,7 +83,7 @@ run_threaded('Faraday + Typhoeus (shared client)', THREADS, REQUESTS_PER_THREAD)
 end
 
 # --- Typhoeus Hydra (concurrent batches from multiple threads) ---
-run_threaded('Typhoeus Hydra (5 concurrent per thread)', THREADS, 1) do
+all_passed &= run_threaded('Typhoeus Hydra (5 concurrent per thread)', THREADS, 1) do
   hydra = Typhoeus::Hydra.new(max_concurrency: 5)
   results = []
   REQUESTS_PER_THREAD.times do
@@ -95,3 +98,4 @@ run_threaded('Typhoeus Hydra (5 concurrent per thread)', THREADS, 1) do
 end
 
 info.server.shutdown
+exit(1) unless all_passed

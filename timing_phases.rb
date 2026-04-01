@@ -9,6 +9,7 @@ info = TLSServer.start
 url = info.url
 uri = URI(url)
 
+begin
 puts "Connection Timing Phases"
 puts "=" * 70
 puts "Target: #{url}"
@@ -38,7 +39,8 @@ puts "  Phase breakdown:"
 printf "    DNS resolution:      %8.3f ms\n", phases['namelookup_time'] * 1000
 printf "    TCP connect:         %8.3f ms\n", (phases['connect_time'] - phases['namelookup_time']) * 1000
 printf "    TLS handshake:       %8.3f ms\n", (phases['appconnect_time'] - phases['connect_time']) * 1000
-printf "    Request/response:    %8.3f ms\n", (phases['starttransfer_time'] - phases['pretransfer_time']) * 1000
+printf "    TTFB (req→1st byte): %8.3f ms\n", (phases['starttransfer_time'] - phases['pretransfer_time']) * 1000
+printf "    Download:            %8.3f ms\n", (phases['total_time'] - phases['starttransfer_time']) * 1000
 printf "    Total:               %8.3f ms\n", phases['total_time'] * 1000
 puts
 
@@ -97,4 +99,6 @@ puts
 puts "  This is all gatekeeper captures today: gateway_latency_ms."
 puts "  There is no way to isolate DNS, TCP, TLS, or TTFB without external tooling."
 
-info.server.shutdown
+ensure
+  info.server.shutdown
+end
